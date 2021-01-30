@@ -1,119 +1,143 @@
-from django.contrib.auth import get_user_model
-from django.db import models
-
-# Create your models here.
-from django.db.models.signals import post_save
-import os
 from datetime import date
 
+from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.db import models
+import os
 
-class Interest(models.Model):
-    """User interests"""
-    name = models.CharField(verbose_name="Name", max_length=50)
+from django.db.models.signals import post_save
+
+
+class SexualOrientation(models.Model):
+    name = models.CharField(max_length=100)
 
     def __str__(self):
         return self.name
+
+
+class Photo(models.Model):
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey()
+
+    def get_upload_path(self, filename):
+        return os.path.join(
+            "photos", str(self.content_type.app_label) + "." + str(self.nice_content_type_name()),
+            str(self.object_id), filename
+        )
+
+    photo = models.ImageField(upload_to=get_upload_path)
+
+    def __str__(self):
+        return f"{self.content_type.app_label}:{self.nice_content_type_name()}"
+
+    def nice_content_type_name(self):
+        return self.content_type.name.replace(" ", "_")
 
 
 class Nationality(models.Model):
+    name = models.CharField(max_length=100)
+
     class Meta:
         verbose_name_plural = "Nationalities"
-
-    name = models.CharField("Nationality", max_length=100)
 
     def __str__(self):
         return self.name
 
 
-class Profile(models.Model):
-    """Model with all extra user data"""
-    user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE, verbose_name="User", related_name="profile")
-    bio = models.TextField(max_length=1000, null=True, blank=True)
-    matched = models.ManyToManyField('self', verbose_name="Matched", null=True, blank=True)
-    birth_date = models.DateField(blank=True, null=True)
-    interests = models.ManyToManyField(
-        Interest, verbose_name="Interests", related_name="user_profiles", null=True, blank=True
-    )
-    nationality = models.ForeignKey(Nationality, on_delete=models.CASCADE, related_name="profiles", null=True,
-                                    blank=True)
+class AcquaintanceRequest(models.Model):
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    sender_object_id = models.PositiveIntegerField()
+    sender = GenericForeignKey('content_type', 'sender_object_id')
+
+    receiver_object_id = models.PositiveIntegerField()
+    receiver = GenericForeignKey('content_type', 'receiver_object_id')
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['content_type', 'sender_object_id', 'receiver_object_id'], name="profiles.AcquaintanceRequests"
+            )
+        ]
+        pass
+
+
+class Match(models.Model):
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    initiator_object_id = models.PositiveIntegerField()
+    initiator = GenericForeignKey('content_type', 'initiator_object_id')
+
+    confirmer_object_id = models.PositiveIntegerField()
+    confirmer = GenericForeignKey('content_type', 'confirmer_object_id')
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['content_type', 'initiator_object_id', 'confirmer_object_id'], name="profiles.Matches"
+            )
+        ]
+        verbose_name_plural = "Matches"
 
     def __str__(self):
-        return self.user.first_name
+        return f"{self.content_type} ({self.initiator_object_id}, {self.confirmer_object_id})"
 
-    def create_user_profile(sender, instance, created, **kwargs):
-        if created:
-            Profile.objects.create(user=instance)
 
-    post_save.connect(create_user_profile, sender=get_user_model())
+class BaseProfile(models.Model):
+    class Meta:
+        abstract = True
 
-    def get_age(self):
+    MAN = "M"
+    WOMAN = "W"
+    OTHER = "O"
+    GENDER = [
+        (MAN, "Man"),
+        (WOMAN, "Woman"),
+        (OTHER, "Other")
+    ]
+    sex = models.CharField(max_length=2, choices=GENDER, default=OTHER)
+    birth_date = models.DateField(null=True, blank=True)
+    bio = models.TextField(max_length=1000, null=True, blank=True)
+    user = models.OneToOneField(
+        get_user_model(), on_delete=models.CASCADE, related_name="%(app_label)s_%(class)s_related"
+    )
+    is_active = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.user.pk}:{self.user.first_name}"
+
+    def get_age(self, birth_date):
+        if birth_date == None:
+            return None
         today = date.today()
-        age = today.year - self.birth_date.year - 1
-        if today.month > self.birth_date.month or (today.month == self.birth_date.month and today.day >= self.birth_date.day):
+        age = today.year - birth_date.year - 1
+        if today.month > birth_date.month or (
+                today.month == birth_date.month and today.day >= birth_date.day):
             age += 1
         return age
 
 
-class Photo(models.Model):
-    """User photos"""
-    user_profile = models.ForeignKey(
-        Profile, on_delete=models.CASCADE, verbose_name="User profile", related_name="photos"
-    )
-
-    def get_upload_path(self, filename):
-        return os.path.join(
-            'photos',
-            str(self.user_profile.pk), filename
-        )
-
-    photo = models.ImageField("Photo", upload_to=get_upload_path)
-
-    def __str__(self):
-        return self.user_profile.user.first_name
-
-
-class AcquaintanceRequestType(models.Model):
-    name = models.CharField(verbose_name="Request Type", max_length=100)
+class Interest(models.Model):
+    name = models.CharField(max_length=50)
 
     def __str__(self):
         return self.name
 
 
-class Match(models.Model):
-    initiator = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="matches_initiated")
-    confirmer = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="matches_confirmed")
-    type = models.ForeignKey(
-        AcquaintanceRequestType, on_delete=models.SET_NULL, related_name="matched", null=True, blank=True
-    )
+class FriendsProfile(BaseProfile):
+    interests = models.ManyToManyField(Interest, related_name="%(app_label)s_%(class)s_related", null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    nationality = models.ForeignKey(Nationality, on_delete=models.SET_NULL, null=True, blank=True)
 
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['initiator', 'confirmer'], name="profiles.Matches")
-        ]
-        verbose_name_plural = "Matches"
-
-
-class AcquaintanceRequest(models.Model):
-    """ First user - sender,
-        Second user - receiver,
-        Type - request type
-    """
-    sender = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="out_requests")
-    receiver = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="in_requests")
-    type = models.ForeignKey(
-        AcquaintanceRequestType, on_delete=models.SET_NULL, related_name="requests", null=True, blank=True
-    )
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['sender', 'receiver'], name="profiles.AcquaintanceRequests")
-        ]
-
-    def delete_request(sender, instance, created, **kwargs):
+    def create_friend_profile(sender, instance, created, **kwargs):
         if created:
-            AcquaintanceRequest.objects.delete(sender=instance.user1, receiver=instance.user2)
+            FriendsProfile.objects.create(user=instance)
 
-    post_save.connect(delete_request, sender=Match)
+    post_save.connect(create_friend_profile, sender=get_user_model())
 
-    def __str__(self):
-        return f"From {self.sender} to {self.receiver} ({self.type})"
+
+class DatesProfile(BaseProfile):
+    interests = models.ManyToManyField(Interest, related_name="%(app_label)s_%(class)s_related", null=True, blank=True)
+    sexual_orientation = models.CharField(max_length=50, null=True, blank=True)
