@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .models import FriendsProfile, Photo
+from .models import FriendsProfile, Photo, Nationality
 from django.contrib.contenttypes.models import ContentType
 
 
@@ -40,3 +40,15 @@ class FriendsProfilesListSerializer(serializers.ModelSerializer):
 
     def get_content_type(self, obj):
         return ContentType.objects.get_for_model(FriendsProfile).pk
+
+
+class NationalityDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Nationality
+        fields = '__all__'
+
+
+class NationalitiesListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Nationality
+        fields = ('name',)

@@ -1,8 +1,14 @@
 from django.shortcuts import render
 from rest_framework import viewsets
 from rest_framework.views import APIView
-from .models import FriendsProfile, Photo
-from .serializers import FriendsProfilesListSerializer, PhotoListSerializer, PhotoDetailSerializer
+from .models import FriendsProfile, Photo, Nationality
+from .serializers import (
+    FriendsProfilesListSerializer,
+    PhotoListSerializer,
+    PhotoDetailSerializer,
+    NationalityDetailSerializer,
+    NationalitiesListSerializer,
+)
 from rest_framework.response import Response
 from django.contrib.contenttypes.models import ContentType
 
@@ -51,3 +57,17 @@ class PhotoDetailView(APIView):
             serializer.save()
             return Response(status=204)
         return Response(status=406, data=serializer.errors)
+
+
+class NationalitiesListView(APIView):
+    def get(self, request, *arg, **kwargs):
+        nationalities = Nationality.objects.all()
+        serializer = NationalitiesListSerializer(nationalities, many=True)
+        return Response(data=serializer.data)
+
+
+class NatinalityDetailView(APIView):
+    def get(self, request, *args, **kwargs):
+        nationality = Nationality.objects.get(pk=kwargs['pk'])
+        serializer = PhotoDetailSerializer(nationality)
+        return Response(serializer.data)

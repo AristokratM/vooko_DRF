@@ -5,8 +5,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db import models
 import os
-
 from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 class SexualOrientation(models.Model):
@@ -46,24 +46,6 @@ class Nationality(models.Model):
         return self.name
 
 
-class AcquaintanceRequest(models.Model):
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    sender_object_id = models.PositiveIntegerField()
-    sender = GenericForeignKey('content_type', 'sender_object_id')
-
-    receiver_object_id = models.PositiveIntegerField()
-    receiver = GenericForeignKey('content_type', 'receiver_object_id')
-    date = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=['content_type', 'sender_object_id', 'receiver_object_id'], name="profiles.AcquaintanceRequests"
-            )
-        ]
-        pass
-
-
 class Match(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     initiator_object_id = models.PositiveIntegerField()
@@ -83,6 +65,27 @@ class Match(models.Model):
 
     def __str__(self):
         return f"{self.content_type} ({self.initiator_object_id}, {self.confirmer_object_id})"
+
+
+class AcquaintanceRequest(models.Model):
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    sender_object_id = models.PositiveIntegerField()
+    sender = GenericForeignKey('content_type', 'sender_object_id')
+
+    receiver_object_id = models.PositiveIntegerField()
+    receiver = GenericForeignKey('content_type', 'receiver_object_id')
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['content_type', 'sender_object_id', 'receiver_object_id'], name="profiles.AcquaintanceRequests"
+            )
+        ]
+        pass
+
+    def __str__(self):
+        return f"{self.content_type} ({self.sender_object_id}, {self.receiver_object_id})"
 
 
 class BaseProfile(models.Model):
@@ -131,13 +134,23 @@ class FriendsProfile(BaseProfile):
     is_active = models.BooleanField(default=True)
     nationality = models.ForeignKey(Nationality, on_delete=models.SET_NULL, null=True, blank=True)
 
-    def create_friend_profile(sender, instance, created, **kwargs):
-        if created:
-            FriendsProfile.objects.create(user=instance)
-
-    post_save.connect(create_friend_profile, sender=get_user_model())
-
 
 class DatesProfile(BaseProfile):
     interests = models.ManyToManyField(Interest, related_name="%(app_label)s_%(class)s_related", null=True, blank=True)
     sexual_orientation = models.CharField(max_length=50, null=True, blank=True)
+
+
+@receiver(post_save, sender=Match)
+def delete_acquaintance_request(sender, instance, created, **kwargs):
+    if created:
+        AcquaintanceRequest.objects.get(
+            content_type=instance.content_type,
+            sender_object_id=instance.initiator_object_id,
+            receiver_object_id=instance.confirmer_object_id
+        ).delete()
+
+
+@receiver(post_save, sender=get_user_model())
+def create_friend_profile(sender, instance, created, **kwargs):
+    if created:
+        FriendsProfile.objects.create(user=instance)
