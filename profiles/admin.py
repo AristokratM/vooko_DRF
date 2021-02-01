@@ -9,10 +9,17 @@ from .models import (
     Match,
     SexualOrientation,
 )
+
+
 # Register your models here.
+@admin.register(FriendsProfile)
+class FriendsProfileAdmin(admin.ModelAdmin):
+    list_display = ('id', 'is_active', 'user')
+    ordering = ('id', )
+
+
 admin.site.register(Interest)
 admin.site.register(Nationality)
-admin.site.register(FriendsProfile)
 admin.site.register(DatesProfile)
 admin.site.register(Photo)
 admin.site.register(SexualOrientation)

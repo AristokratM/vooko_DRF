@@ -2,11 +2,14 @@ from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.db import models
 import os
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+
+PROFILES_MODELS = models.Q(app_label='profiles', model='friendsprofile') \
+                  | models.Q(app_label='profiles', model='datesprofile')
 
 
 class SexualOrientation(models.Model):
@@ -16,24 +19,6 @@ class SexualOrientation(models.Model):
         return self.name
 
 
-class Photo(models.Model):
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey()
-
-    def get_upload_path(self, filename):
-        return os.path.join(
-            "photos", str(self.content_type.app_label) + "." + str(self.nice_content_type_name()),
-            str(self.object_id), filename
-        )
-
-    photo = models.ImageField(upload_to=get_upload_path)
-
-    def __str__(self):
-        return f"{self.content_type.app_label}:{self.nice_content_type_name()}"
-
-    def nice_content_type_name(self):
-        return self.content_type.name.replace(" ", "_")
 
 
 class Nationality(models.Model):
@@ -47,7 +32,7 @@ class Nationality(models.Model):
 
 
 class Match(models.Model):
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=PROFILES_MODELS)
     initiator_object_id = models.PositiveIntegerField()
     initiator = GenericForeignKey('content_type', 'initiator_object_id')
 
@@ -68,7 +53,7 @@ class Match(models.Model):
 
 
 class AcquaintanceRequest(models.Model):
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=PROFILES_MODELS)
     sender_object_id = models.PositiveIntegerField()
     sender = GenericForeignKey('content_type', 'sender_object_id')
 
@@ -133,11 +118,13 @@ class FriendsProfile(BaseProfile):
     interests = models.ManyToManyField(Interest, related_name="%(app_label)s_%(class)s_related", null=True, blank=True)
     is_active = models.BooleanField(default=True)
     nationality = models.ForeignKey(Nationality, on_delete=models.SET_NULL, null=True, blank=True)
+    photos = GenericRelation('Photo', related_query_name="friends_profile")
 
 
 class DatesProfile(BaseProfile):
     interests = models.ManyToManyField(Interest, related_name="%(app_label)s_%(class)s_related", null=True, blank=True)
     sexual_orientation = models.CharField(max_length=50, null=True, blank=True)
+    photos = GenericRelation('Photo', related_query_name="dates_profile")
 
 
 @receiver(post_save, sender=Match)
@@ -154,3 +141,22 @@ def delete_acquaintance_request(sender, instance, created, **kwargs):
 def create_friend_profile(sender, instance, created, **kwargs):
     if created:
         FriendsProfile.objects.create(user=instance)
+
+class Photo(models.Model):
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=PROFILES_MODELS)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey()
+
+    def get_upload_path(self, filename):
+        return os.path.join(
+            "photos", str(self.content_type.app_label) + "." + str(self.nice_content_type_name()),
+            str(self.object_id), filename
+        )
+
+    photo = models.ImageField(upload_to=get_upload_path)
+
+    def __str__(self):
+        return f"{self.content_type.app_label}:{self.nice_content_type_name()}"
+
+    def nice_content_type_name(self):
+        return self.content_type.name.replace(" ", "_")
