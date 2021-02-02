@@ -6,7 +6,13 @@ from .views import (
     NatinalityDetailView,
     NationalitiesListView,
     AcquaintanceRequestsListView,
-    AcquaintanceRequestDetailView
+    AcquaintanceRequestDetailView,
+    MatchDetailView,
+    MatchesListView,
+    SexualOrientationDetailView,
+    SexualOrientationsListView,
+    ProfilesListView,
+    ProfileDetailView,
 )
 
 urlpatterns = [
@@ -15,7 +21,13 @@ urlpatterns = [
     path('photos/<int:pk>', PhotoDetailView.as_view(), name="photo-detail"),
     path('nationalities/', NationalitiesListView.as_view(), name="nationality-list"),
     path('nationalities/<int:pk>', NatinalityDetailView.as_view(), name="nationality-detail"),
-    path('acquaintanceRequest/', AcquaintanceRequestsListView.as_view(), name="acquaintanceRequest-detail"),
-    path('acquaintanceRequest/<int:pk>', AcquaintanceRequestDetailView.as_view(), name="acquaintanceRequest-detail"),
+    path('acquaintanceRequests/', AcquaintanceRequestsListView.as_view(), name="acquaintanceRequest-list"),
+    path('acquaintanceRequests/<int:pk>', AcquaintanceRequestDetailView.as_view(), name="acquaintanceRequest-detail"),
+    path('matches/', MatchesListView.as_view(), name="match-list"),
+    path('matches/<int:pk>', MatchDetailView.as_view(), name="match-detail"),
+    path('sexualOrientations/', SexualOrientationsListView.as_view(), name="sexualOrientation-list"),
+    path('sexualOrientations/<int:pk>', SexualOrientationDetailView.as_view(), name="sexualOrientation-detail"),
+    path('profiles/<int:ct_type>/', ProfilesListView.as_view(), name='profile-list'),
+    path('profiles/<int:ct_type>/<int:pk>', ProfileDetailView.as_view(), name='profile-list'),
 
 ]

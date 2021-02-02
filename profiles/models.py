@@ -19,8 +19,6 @@ class SexualOrientation(models.Model):
         return self.name
 
 
-
-
 class Nationality(models.Model):
     name = models.CharField(max_length=100)
 
@@ -38,7 +36,7 @@ class Match(models.Model):
 
     confirmer_object_id = models.PositiveIntegerField()
     confirmer = GenericForeignKey('content_type', 'confirmer_object_id')
-    date = models.DateTimeField(auto_now_add=True)
+    match_date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
@@ -59,7 +57,7 @@ class AcquaintanceRequest(models.Model):
 
     receiver_object_id = models.PositiveIntegerField()
     receiver = GenericForeignKey('content_type', 'receiver_object_id')
-    date = models.DateTimeField(auto_now_add=True)
+    request_date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
@@ -116,15 +114,39 @@ class Interest(models.Model):
 
 class FriendsProfile(BaseProfile):
     interests = models.ManyToManyField(Interest, related_name="%(app_label)s_%(class)s_related", null=True, blank=True)
-    is_active = models.BooleanField(default=True)
     nationality = models.ForeignKey(Nationality, on_delete=models.SET_NULL, null=True, blank=True)
     photos = GenericRelation('Photo', related_query_name="friends_profile")
+    confirmed_matches = GenericRelation(
+        'Match', related_query_name="friends_profile_confirmer", object_id_field='confirmer_object_id'
+    )
+    initiated_matches = GenericRelation(
+        'Match', related_query_name="friends_profile_initiator", object_id_field='initiator_object_id'
+    )
+
+    sent_requests = GenericRelation(
+        'AcquaintanceRequest', related_query_name="friends_profile_sender", object_id_field='sender_object_id'
+    )
+    received_requests = GenericRelation(
+        'AcquaintanceRequest', related_query_name="friends_profile_receiver", object_id_field='receiver_object_id'
+    )
 
 
 class DatesProfile(BaseProfile):
     interests = models.ManyToManyField(Interest, related_name="%(app_label)s_%(class)s_related", null=True, blank=True)
     sexual_orientation = models.CharField(max_length=50, null=True, blank=True)
     photos = GenericRelation('Photo', related_query_name="dates_profile")
+    initiated_matches = GenericRelation(
+        'Match', related_query_name="dates_profile_initiator", object_id_field='initiator_object_id'
+    )
+    confirmed_matches = GenericRelation(
+        'Match', related_query_name="dates_profile_confirmer", object_id_field='confirmer_object_id'
+    )
+    acquaintance_requests = GenericRelation(
+        'AcquaintanceRequest', related_query_name="dates_profile_senders", object_id_field='sender_object_id'
+    )
+    received_requests = GenericRelation(
+        'AcquaintanceRequest', related_query_name="dates_profile_receivers", object_id_field='receiver_object_id'
+    )
 
 
 @receiver(post_save, sender=Match)
@@ -140,7 +162,10 @@ def delete_acquaintance_request(sender, instance, created, **kwargs):
 @receiver(post_save, sender=get_user_model())
 def create_friend_profile(sender, instance, created, **kwargs):
     if created:
-        FriendsProfile.objects.create(user=instance)
+        fp = FriendsProfile.objects.create(user=instance)
+        fp.is_active = True
+        fp.save()
+
 
 class Photo(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, limit_choices_to=PROFILES_MODELS)
