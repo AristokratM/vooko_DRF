@@ -188,11 +188,7 @@ class ProfilesListView(ProfilesMixin, APIView):
     def post(self, request, *args, **kwargs):
         kwargs['serializer_type'] = self.DETAIL_SERIALIZERS
         serializer_class = self.get_serializer_class(*args, **kwargs)
-        data = request.data.copy()
-        print(request.data)
-        data.__setitem__('user', request.user.pk)
-        print(data)
-        serializer = serializer_class(data=data, )
+        serializer = serializer_class(data=request.data, context={'request': request} )
         if serializer.is_valid():
             serializer.save()
             return Response(status=201, data=serializer.data)
@@ -214,11 +210,7 @@ class ProfileDetailView(ProfilesMixin, APIView):
         profile = self.ct_model.objects.get(pk=kwargs['pk'])
         if profile.user != request.user:
             return Response(status=406, data="You can't change data of another user")
-        data = request.data.copy()
-        print(request.data)
-        data.__setitem__('user', request.user.pk)
-        data = QueryDict(data)
-        serializer = serializer_class(profile, data=data)
+        serializer = serializer_class(profile, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(status=201, data=serializer.data)

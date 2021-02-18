@@ -130,7 +130,6 @@ class DatesProfilesListSerializer(serializers.ModelSerializer):
 
 class InterestClassField(serializers.StringRelatedField):
     def to_internal_value(self, data):
-        print(data)
         interest = Interest.objects.filter(name=data)
         if interest and len(interest) == 1:
             return interest.get().pk
@@ -138,7 +137,17 @@ class InterestClassField(serializers.StringRelatedField):
 
 
 class DatesProfileDetailSerializer(serializers.ModelSerializer):
-    interests = InterestClassField(many=True)
+    photos = PhotoListSerializer(many=True, read_only=True)
+    initiated_matches = MatchesListSerializer(many=True, read_only=True)
+    confirmed_matches = MatchesListSerializer(many=True, read_only=True)
+    sent_requests = AcquaintanceRequestsListSerializer(many=True, read_only=True)
+    received_requests = AcquaintanceRequestsListSerializer(many=True, read_only=True)
+    interests = InterestClassField(many=True, required=False)
+
+    def is_valid(self, raise_exception=False):
+        self.initial_data['user'] = self.context['request'].user.pk
+        return super().is_valid()
+
     class Meta:
         model = DatesProfile
         fields = '__all__'
@@ -150,12 +159,13 @@ class FriendsProfileDetailSerializer(serializers.ModelSerializer):
     confirmed_matches = MatchesListSerializer(many=True, read_only=True)
     sent_requests = AcquaintanceRequestsListSerializer(many=True, read_only=True)
     received_requests = AcquaintanceRequestsListSerializer(many=True, read_only=True)
-    interests = InterestClassField(many=True)
+    interests = InterestClassField(many=True, required=False)
 
-    def save(self):
-        super(FriendsProfileDetailSerializer, self).save()
+    def is_valid(self, raise_exception=False):
+        self.initial_data['user'] = self.context['request'].user.pk
+        return super().is_valid()
+
 
     class Meta:
         model = FriendsProfile
         fields = '__all__'
-
