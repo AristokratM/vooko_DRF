@@ -38,7 +38,6 @@ from .models import PROFILES_MODELS
 # Create your views here.
 
 
-
 class PhotoListView(APIView):
     def get(self, request, *args, **kwargs):
         photos = Photo.objects.all()
@@ -88,7 +87,7 @@ class NationalitiesListView(APIView):
         return Response(status=406, data=serializer.errors)
 
 
-class NatinalityDetailView(APIView):
+class NationalityDetailView(APIView):
     def get(self, request, *args, **kwargs):
         nationality = Nationality.objects.get(pk=kwargs['pk'])
         serializer = NationalityDetailSerializer(nationality)
@@ -117,7 +116,8 @@ class AcquaintanceRequestsListView(APIView):
     def post(self, request, *args, **kwargs):
         data = request.data.copy()
         data.__setitem__('sender_object_id',
-            ContentType.objects.get(pk=data['content_type']).model_class().objects.get(user=request.user).pk)
+                         ContentType.objects.get(pk=data['content_type']).model_class().objects.get(
+                             user=request.user).pk)
         serializer = AcquaintanceRequestDetailSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -130,7 +130,6 @@ class AcquaintanceRequestDetailView(APIView):
         acquaintance_request = AcquaintanceRequest.objects.get(pk=kwargs['pk'])
         serializer = AcquaintanceRequestDetailSerializer(acquaintance_request)
         return Response(status=200, data=serializer.data)
-
 
     def delete(self, request, *args, **kwargs):
         acquaintance_request = AcquaintanceRequest.objects.get(pk=kwargs['pk'])
@@ -147,7 +146,8 @@ class MatchesListView(APIView):
     def post(self, request, *args, **kwargs):
         data = request.data.copy()
         data.__setitem__('initiator_object_id',
-            ContentType.objects.get(pk=data['content_type']).model_class().objects.get(user=request.user).pk)
+                         ContentType.objects.get(pk=data['content_type']).model_class().objects.get(
+                             user=request.user).pk)
         serializer = MatchDetailSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -188,7 +188,7 @@ class ProfilesListView(ProfilesMixin, APIView):
     def post(self, request, *args, **kwargs):
         kwargs['serializer_type'] = self.DETAIL_SERIALIZERS
         serializer_class = self.get_serializer_class(*args, **kwargs)
-        serializer = serializer_class(data=request.data, context={'request': request} )
+        serializer = serializer_class(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(status=201, data=serializer.data)
@@ -198,7 +198,7 @@ class ProfilesListView(ProfilesMixin, APIView):
 class ProfileDetailView(ProfilesMixin, APIView):
 
     def get(self, request, *args, **kwargs):
-        kwargs['serializer_type'] = self.DETAIL_SERIALIZERS
+        kwargs['serializer_type'] = self.INFO_SERIALIZERS
         serializer_class = self.get_serializer_class(*args, **kwargs)
         profile = self.ct_model.objects.get(pk=kwargs['pk'])
         serializer = serializer_class(profile)
@@ -213,7 +213,7 @@ class ProfileDetailView(ProfilesMixin, APIView):
         serializer = serializer_class(profile, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
-            return Response(status=201, data=serializer.data)
+            return Response(status=201)
         return Response(status=406, data=serializer.errors)
 
     def delete(self, request, *args, **kwargs):
@@ -238,4 +238,3 @@ class UserProfilesList(APIView):
             friends_serializer = FriendsProfileDetailSerializer(friend_profile.get())
             data['friends_profile'] = friends_serializer.data
         return Response(status=200, data=data)
-

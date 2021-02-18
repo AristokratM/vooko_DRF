@@ -2,7 +2,14 @@ from django.contrib.contenttypes.models import ContentType
 from rest_framework.response import Response
 
 from profiles.models import FriendsProfile, DatesProfile
-from profiles.serializers import FriendsProfilesListSerializer, DatesProfilesListSerializer, FriendsProfileDetailSerializer, DatesProfileDetailSerializer
+from profiles.serializers import (
+    FriendsProfilesListSerializer,
+    DatesProfilesListSerializer,
+    FriendsProfileDetailSerializer,
+    DatesProfileDetailSerializer,
+    FriendsProfileInfoSerializer,
+    DatesProfileInfoSerializer,
+)
 
 
 class ProfilesMixin:
@@ -13,6 +20,11 @@ class ProfilesMixin:
     DETAIL_SERIALIZERS = {
         f'{FriendsProfile}': FriendsProfileDetailSerializer,
         f'{DatesProfile}': DatesProfileDetailSerializer,
+    }
+
+    INFO_SERIALIZERS = {
+        f'{FriendsProfile}': FriendsProfileInfoSerializer,
+        f'{DatesProfile}': DatesProfileInfoSerializer,
     }
 
     def get_serializer_class(self, *args, **kwargs):

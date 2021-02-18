@@ -165,7 +165,20 @@ class FriendsProfileDetailSerializer(serializers.ModelSerializer):
         self.initial_data['user'] = self.context['request'].user.pk
         return super().is_valid()
 
-
     class Meta:
         model = FriendsProfile
+        fields = '__all__'
+
+
+class FriendsProfileInfoSerializer(serializers.ModelSerializer):
+    interests = InterestClassField(many=True, read_only=True)
+    class Meta:
+        model = FriendsProfile
+        fields = '__all__'
+
+
+class DatesProfileInfoSerializer(serializers.ModelSerializer):
+    interests = InterestClassField(many=True, read_only=True)
+    class Meta:
+        model = DatesProfile
         fields = '__all__'

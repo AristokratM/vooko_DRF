@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     PhotoListView,
     PhotoDetailView,
-    NatinalityDetailView,
+    NationalityDetailView,
     NationalitiesListView,
     AcquaintanceRequestsListView,
     AcquaintanceRequestDetailView,
@@ -19,7 +19,7 @@ urlpatterns = [
     path('photos/', PhotoListView.as_view(), name="photo-list"),
     path('photos/<int:pk>', PhotoDetailView.as_view(), name="photo-detail"),
     path('nationalities/', NationalitiesListView.as_view(), name="nationality-list"),
-    path('nationalities/<int:pk>', NatinalityDetailView.as_view(), name="nationality-detail"),
+    path('nationalities/<int:pk>', NationalityDetailView.as_view(), name="nationality-detail"),
     path('acquaintanceRequests/', AcquaintanceRequestsListView.as_view(), name="acquaintanceRequest-list"),
     path('acquaintanceRequests/<int:pk>', AcquaintanceRequestDetailView.as_view(), name="acquaintanceRequest-detail"),
     path('matches/', MatchesListView.as_view(), name="match-list"),
