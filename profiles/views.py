@@ -1,5 +1,8 @@
+from django.http import QueryDict
 from django.shortcuts import render
 from rest_framework import viewsets
+import json
+
 from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from .models import (
@@ -29,16 +32,11 @@ from .serializers import (
 from rest_framework.response import Response
 from django.contrib.contenttypes.models import ContentType
 from .mixins import ProfilesMixin
+from .models import PROFILES_MODELS
 
 
 # Create your views here.
 
-class FriendsProfilesListView(APIView):
-
-    def get(self, request, *args, **kwargs):
-        profiles = FriendsProfile.objects.all()
-        serializer = FriendsProfilesListSerializer(profiles, many=True)
-        return Response(serializer.data)
 
 
 class PhotoListView(APIView):
@@ -117,7 +115,10 @@ class AcquaintanceRequestsListView(APIView):
         return Response(status=204, data=serializer.data)
 
     def post(self, request, *args, **kwargs):
-        serializer = AcquaintanceRequestDetailSerializer(data=request.data)
+        data = request.data.copy()
+        data.__setitem__('sender_object_id',
+            ContentType.objects.get(pk=data['content_type']).model_class().objects.get(user=request.user).pk)
+        serializer = AcquaintanceRequestDetailSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return Response(status=201)
@@ -130,13 +131,6 @@ class AcquaintanceRequestDetailView(APIView):
         serializer = AcquaintanceRequestDetailSerializer(acquaintance_request)
         return Response(status=200, data=serializer.data)
 
-    def put(self, request, *args, **kwargs):
-        acquaintance_request = AcquaintanceRequest.objects.get(pk=kwargs['pk'])
-        serializer = AcquaintanceRequestDetailSerializer(acquaintance_request, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(status=204)
-        return Response(status=406, data=serializer.errors)
 
     def delete(self, request, *args, **kwargs):
         acquaintance_request = AcquaintanceRequest.objects.get(pk=kwargs['pk'])
@@ -151,7 +145,10 @@ class MatchesListView(APIView):
         return Response(status=200, data=serializer.data)
 
     def post(self, request, *args, **kwargs):
-        serializer = MatchDetailSerializer(data=request.data)
+        data = request.data.copy()
+        data.__setitem__('initiator_object_id',
+            ContentType.objects.get(pk=data['content_type']).model_class().objects.get(user=request.user).pk)
+        serializer = MatchDetailSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return Response(status=201)
@@ -163,14 +160,6 @@ class MatchDetailView(APIView):
         match = Match.objects.get(pk=kwargs['pk'])
         serializer = MatchDetailSerializer(match)
         return Response(status=200, data=serializer.data)
-
-    def put(self, request, *args, **kwargs):
-        match = Match.objects.get(pk=kwargs['pk'])
-        serializer = MatchDetailSerializer(match, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(status=204)
-        return Response(status=406)
 
     def delete(self, request, *args, **kwargs):
         match = Match.objects.get(pk=kwargs['pk'])
@@ -199,7 +188,11 @@ class ProfilesListView(ProfilesMixin, APIView):
     def post(self, request, *args, **kwargs):
         kwargs['serializer_type'] = self.DETAIL_SERIALIZERS
         serializer_class = self.get_serializer_class(*args, **kwargs)
-        serializer = serializer_class(data=request.data)
+        data = request.data.copy()
+        print(request.data)
+        data.__setitem__('user', request.user.pk)
+        print(data)
+        serializer = serializer_class(data=data, )
         if serializer.is_valid():
             serializer.save()
             return Response(status=201, data=serializer.data)
@@ -207,10 +200,50 @@ class ProfilesListView(ProfilesMixin, APIView):
 
 
 class ProfileDetailView(ProfilesMixin, APIView):
+
     def get(self, request, *args, **kwargs):
         kwargs['serializer_type'] = self.DETAIL_SERIALIZERS
         serializer_class = self.get_serializer_class(*args, **kwargs)
-        queryset = self.ct_model.objects.get(pk=kwargs['pk'])
-        serializer = serializer_class(queryset)
+        profile = self.ct_model.objects.get(pk=kwargs['pk'])
+        serializer = serializer_class(profile)
         return Response(status=200, data=serializer.data)
+
+    def put(self, request, *args, **kwargs):
+        kwargs['serializer_type'] = self.DETAIL_SERIALIZERS
+        serializer_class = self.get_serializer_class(*args, **kwargs)
+        profile = self.ct_model.objects.get(pk=kwargs['pk'])
+        if profile.user != request.user:
+            return Response(status=406, data="You can't change data of another user")
+        data = request.data.copy()
+        print(request.data)
+        data.__setitem__('user', request.user.pk)
+        data = QueryDict(data)
+        serializer = serializer_class(profile, data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(status=201, data=serializer.data)
+        return Response(status=406, data=serializer.errors)
+
+    def delete(self, request, *args, **kwargs):
+        kwargs['serializer_type'] = self.DETAIL_SERIALIZERS
+        profile = self.ct_model.objects.get(pk=kwargs['pk'])
+        profile.delete()
+        return Response(status=204)
+
+
+class UserProfilesList(APIView):
+    def get(self, request, *args, **kwargs):
+        date_profile = DatesProfile.objects.filter(user=request.user)
+        friend_profile = FriendsProfile.objects.filter(user=request.user)
+        data = {}
+        data['content_types'] = {}
+        data['content_types']['dates_profile'] = ContentType.objects.get_for_model(DatesProfile).pk
+        data['content_types']['friends_profile'] = ContentType.objects.get_for_model(FriendsProfile).pk
+        if date_profile:
+            date_serializer = DatesProfileDetailSerializer(date_profile.get())
+            data['dates_profile'] = date_serializer.data
+        if friend_profile:
+            friends_serializer = FriendsProfileDetailSerializer(friend_profile.get())
+            data['friends_profile'] = friends_serializer.data
+        return Response(status=200, data=data)
 

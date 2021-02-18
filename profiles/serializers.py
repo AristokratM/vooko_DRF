@@ -8,6 +8,7 @@ from .models import (
     DatesProfile,
     Match,
     SexualOrientation,
+    Interest
 )
 from django.contrib.contenttypes.models import ContentType
 
@@ -89,7 +90,7 @@ class AcquaintanceRequestDetailSerializer(serializers.ModelSerializer):
 class MatchesListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Match
-        exclude = ('match_date', )
+        exclude = ('match_date',)
 
 
 class MatchDetailSerializer(serializers.ModelSerializer):
@@ -127,7 +128,17 @@ class DatesProfilesListSerializer(serializers.ModelSerializer):
         return obj.get_age(obj.birth_date)
 
 
+class InterestClassField(serializers.StringRelatedField):
+    def to_internal_value(self, data):
+        print(data)
+        interest = Interest.objects.filter(name=data)
+        if interest and len(interest) == 1:
+            return interest.get().pk
+        raise serializers.ValidationError(f"Interest with name {data} not found")
+
+
 class DatesProfileDetailSerializer(serializers.ModelSerializer):
+    interests = InterestClassField(many=True)
     class Meta:
         model = DatesProfile
         fields = '__all__'
@@ -139,7 +150,12 @@ class FriendsProfileDetailSerializer(serializers.ModelSerializer):
     confirmed_matches = MatchesListSerializer(many=True, read_only=True)
     sent_requests = AcquaintanceRequestsListSerializer(many=True, read_only=True)
     received_requests = AcquaintanceRequestsListSerializer(many=True, read_only=True)
+    interests = InterestClassField(many=True)
+
+    def save(self):
+        super(FriendsProfileDetailSerializer, self).save()
 
     class Meta:
         model = FriendsProfile
         fields = '__all__'
+

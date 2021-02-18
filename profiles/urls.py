@@ -1,6 +1,5 @@
 from django.urls import path
 from .views import (
-    FriendsProfilesListView,
     PhotoListView,
     PhotoDetailView,
     NatinalityDetailView,
@@ -13,10 +12,10 @@ from .views import (
     SexualOrientationsListView,
     ProfilesListView,
     ProfileDetailView,
+    UserProfilesList,
 )
 
 urlpatterns = [
-    path('profiles/', FriendsProfilesListView.as_view(), name="profiles-list"),
     path('photos/', PhotoListView.as_view(), name="photo-list"),
     path('photos/<int:pk>', PhotoDetailView.as_view(), name="photo-detail"),
     path('nationalities/', NationalitiesListView.as_view(), name="nationality-list"),
@@ -27,6 +26,7 @@ urlpatterns = [
     path('matches/<int:pk>', MatchDetailView.as_view(), name="match-detail"),
     path('sexualOrientations/', SexualOrientationsListView.as_view(), name="sexualOrientation-list"),
     path('sexualOrientations/<int:pk>', SexualOrientationDetailView.as_view(), name="sexualOrientation-detail"),
+    path('profiles/', UserProfilesList.as_view(), name='user-profiles'),
     path('profiles/<int:ct_type>/', ProfilesListView.as_view(), name='profile-list'),
     path('profiles/<int:ct_type>/<int:pk>', ProfileDetailView.as_view(), name='profile-list'),
 
